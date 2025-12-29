@@ -5,34 +5,27 @@ import { useEffect, useMemo, useState } from "react";
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export default function Page() {
-  // Detect iframe embedding (Rex)
   const isEmbedded =
     typeof window !== "undefined" && window.self !== window.top;
 
-  // Pull record_id from URL if Rex passes it
   const recordId = useMemo(() => {
     if (typeof window === "undefined") return null;
     return new URLSearchParams(window.location.search).get("record_id");
   }, []);
 
-  // -------------------------
-  // Chat state
-  // -------------------------
+  // Chat
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
 
-  // -------------------------
-  // Image edit state
-  // -------------------------
+  // Image editing
   const [file, setFile] = useState<File | null>(null);
   const [imgPrompt, setImgPrompt] = useState("");
   const [editing, setEditing] = useState(false);
   const [resultB64, setResultB64] = useState<string | null>(null);
   const [imgError, setImgError] = useState<string | null>(null);
 
-  // Clear image result when a new file is chosen
   useEffect(() => {
     setResultB64(null);
     setImgError(null);
@@ -40,7 +33,6 @@ export default function Page() {
 
   async function sendChat() {
     setChatError(null);
-
     const text = input.trim();
     if (!text) return;
 
@@ -124,7 +116,8 @@ export default function Page() {
     <main
       style={{
         padding: isEmbedded ? 8 : 16,
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontFamily:
+          "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         maxWidth: 980,
         margin: "0 auto",
       }}
@@ -132,16 +125,11 @@ export default function Page() {
       <header style={{ marginBottom: 12 }}>
         <h1 style={{ margin: 0, fontSize: 20 }}>Geraldine</h1>
         <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
-          {recordId ? (
-            <>Rex record_id: {recordId}</>
-          ) : (
-            <>No record_id passed</>
-          )}
+          {recordId ? <>Rex record_id: {recordId}</> : <>No record_id passed</>}
         </div>
       </header>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {/* ---------------- Chat ---------------- */}
         <section
           style={{
             flex: "1 1 460px",
@@ -164,12 +152,15 @@ export default function Page() {
           >
             {messages.length === 0 ? (
               <p style={{ opacity: 0.7, marginTop: 0 }}>
-                Ask for a client ready email, WhatsApp message, listing copy, blog outline, or an image prompt.
+                Ask for a client ready email, WhatsApp message, listing copy,
+                blog outline, or an image prompt.
               </p>
             ) : (
               messages.map((m, i) => (
                 <div key={i} style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 700 }}>
+                  <div
+                    style={{ fontSize: 12, opacity: 0.65, fontWeight: 700 }}
+                  >
                     {m.role}
                   </div>
                   <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
@@ -216,7 +207,6 @@ export default function Page() {
           </div>
         </section>
 
-        {/* ---------------- Image editing ---------------- */}
         <section
           style={{
             flex: "1 1 460px",
@@ -227,7 +217,8 @@ export default function Page() {
         >
           <h2 style={{ marginTop: 0, fontSize: 16 }}>Image editing</h2>
           <p style={{ marginTop: 0, opacity: 0.7 }}>
-            Upload a property photo and describe the edit. Keep it believable for a local Hertfordshire buyer.
+            Upload a property photo and describe the edit. Keep it believable
+            for a local Hertfordshire buyer.
           </p>
 
           <div style={{ display: "grid", gap: 8 }}>
@@ -272,7 +263,14 @@ export default function Page() {
 
             {resultB64 ? (
               <div style={{ marginTop: 6 }}>
-                <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 700, marginBottom: 6 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    opacity: 0.65,
+                    fontWeight: 700,
+                    marginBottom: 6,
+                  }}
+                >
                   Result
                 </div>
                 <img
