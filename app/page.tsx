@@ -9,6 +9,9 @@ export default function Page() {
   async function send() {
     if (!input.trim()) return;
 
+    const isEmbedded =
+  typeof window !== "undefined" && window.self !== window.top;
+
     const next = [...messages, { role: "user", content: input }];
     setMessages(next);
     setInput("");
@@ -24,7 +27,13 @@ export default function Page() {
   }
 
   return (
-    <main style={{ padding: 16, fontFamily: "system-ui" }}>
+    <main
+  style={{
+    padding: isEmbedded ? 8 : 16,
+    fontFamily: "system-ui",
+  }}
+>
+
       <h1>Geraldine</h1>
 
       <div
@@ -56,3 +65,9 @@ export default function Page() {
     </main>
   );
 }
+const recordId =
+  typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("record_id")
+    : null;
+body: JSON.stringify({ messages: next, record_id: recordId }),
+
