@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "eslint"
   },
-"dependencies": {
-  "next": "16.1.1",
-  "react": "19.2.3",
-  "react-dom": "19.2.3",
-  "openai": "^4.0.0"
-},
+  "dependencies": {
+    "next": "16.1.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "openai": "^4.0.0",
+    "sharp": "^0.33.0"
+  },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
@@ -24,4 +25,3 @@
     "typescript": "^5"
   }
 }
-
