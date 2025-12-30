@@ -41,7 +41,11 @@ export default function Page() {
     const text = input.trim();
     if (!text) return;
 
-    const next = [...messages, { role: "user", content: text }];
+    const next: ChatMsg[] = [
+      ...messages,
+      { role: "user" as const, content: text },
+    ];
+
     setMessages(next);
     setInput("");
     setSending(true);
@@ -59,13 +63,17 @@ export default function Page() {
       }
 
       const data = (await res.json()) as { reply?: string };
-      setMessages([...next, { role: "assistant", content: data.reply ?? "" }]);
+
+      setMessages([
+        ...next,
+        { role: "assistant" as const, content: data.reply ?? "" },
+      ]);
     } catch (e: any) {
       setChatError(e?.message ?? "Chat failed");
       setMessages([
         ...next,
         {
-          role: "assistant",
+          role: "assistant" as const,
           content:
             "Sorry, something went wrong on my side. Can you try again in a moment.",
         },
