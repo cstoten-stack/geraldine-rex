@@ -15,7 +15,7 @@ const HARD_RULE =
 
 const MAX_BYTES = 4 * 1024 * 1024; // 4MB dall-e-2 limit
 
-async function toPngUnder4MB(input: Buffer): Promise<Buffer> {
+async function toRgbaPngUnder4MB(input: Buffer): Promise<Buffer> {
   const meta = await sharp(input).metadata();
 
   let width = meta.width ?? 2000;
@@ -24,11 +24,10 @@ async function toPngUnder4MB(input: Buffer): Promise<Buffer> {
   for (let i = 0; i < 6; i++) {
     const png = await sharp(input)
       .resize({ width, withoutEnlargement: true })
-      .ensureAlpha() // force RGBA
+      .ensureAlpha(1) // ensure real RGBA alpha channel
       .png({
         compressionLevel: 9,
         adaptiveFiltering: true,
-        palette: true,
       })
       .toBuffer();
 
@@ -39,11 +38,10 @@ async function toPngUnder4MB(input: Buffer): Promise<Buffer> {
 
   return sharp(input)
     .resize({ width: 900, withoutEnlargement: true })
-    .ensureAlpha()
+    .ensureAlpha(1)
     .png({
       compressionLevel: 9,
       adaptiveFiltering: true,
-      palette: true,
     })
     .toBuffer();
 }
@@ -67,11 +65,20 @@ export async function POST(req: Request) {
 
     const inputBuffer = Buffer.from(await image.arrayBuffer());
 
-    const pngBuffer = await toPngUnder4MB(inputBuffer);
+    // Convert to RGBA PNG under 4MB for dall-e-2 edits
+    const pngBuffer = await toRgbaPngUnder4MB(inputBuffer);
 
-    const imgFile = await toFile(pngBuffer, "image.png", {
-      type: "image/png",
+    // Optional: log details to confirm in Vercel logs
+    const outMeta = await sharp(pngBuffer).metadata();
+    console.log("PNG META", {
+      format: outMeta.format,
+      channels: outMeta.channels,
+      size: pngBuffer.length,
+      width: outMeta.width,
+      height: outMeta.height,
     });
+
+    const imgFile = await toFile(pngBuffer, "image.png", { type: "image/png" });
 
     const response = await client.images.edit({
       model: "dall-e-2",
