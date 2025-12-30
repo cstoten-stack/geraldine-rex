@@ -24,7 +24,7 @@ async function toRgbaPngUnder4MB(input: Buffer): Promise<Buffer> {
   for (let i = 0; i < 6; i++) {
     const png = await sharp(input)
       .resize({ width, withoutEnlargement: true })
-      .ensureAlpha(1) // ensure real RGBA alpha channel
+      .ensureAlpha(1) // ensure RGBA
       .png({
         compressionLevel: 9,
         adaptiveFiltering: true,
@@ -46,6 +46,18 @@ async function toRgbaPngUnder4MB(input: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
+async function fetchAsBase64Png(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch edited image: ${res.status}`);
+  const arrayBuf = await res.arrayBuffer();
+  const buf = Buffer.from(arrayBuf);
+
+  // Ensure the returned data is PNG base64 (it usually is already)
+  // but we normalise it anyway.
+  const pngBuf = await sharp(buf).png().toBuffer();
+  return pngBuf.toString("base64");
+}
+
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
@@ -64,19 +76,7 @@ export async function POST(req: Request) {
     const finalPrompt = HARD_RULE + userPrompt;
 
     const inputBuffer = Buffer.from(await image.arrayBuffer());
-
-    // Convert to RGBA PNG under 4MB for dall-e-2 edits
     const pngBuffer = await toRgbaPngUnder4MB(inputBuffer);
-
-    // Optional: log details to confirm in Vercel logs
-    const outMeta = await sharp(pngBuffer).metadata();
-    console.log("PNG META", {
-      format: outMeta.format,
-      channels: outMeta.channels,
-      size: pngBuffer.length,
-      width: outMeta.width,
-      height: outMeta.height,
-    });
 
     const imgFile = await toFile(pngBuffer, "image.png", { type: "image/png" });
 
@@ -84,16 +84,27 @@ export async function POST(req: Request) {
       model: "dall-e-2",
       image: imgFile,
       prompt: finalPrompt,
+      // Some SDK versions support this, some ignore it:
+      // response_format: "b64_json",
     });
 
-    const b64 = response.data?.[0]?.b64_json;
+    const first = response.data?.[0];
 
-    if (!b64) {
-      console.error("OpenAI response had no image", response);
-      return new Response("No image returned from OpenAI", { status: 500 });
+    // Handle base64 directly if provided
+    const b64 = (first as any)?.b64_json;
+    if (b64) {
+      return Response.json({ b64 });
     }
 
-    return Response.json({ b64 });
+    // Otherwise handle URL output (common with dall-e-2)
+    const url = (first as any)?.url;
+    if (url) {
+      const downloadedB64 = await fetchAsBase64Png(url);
+      return Response.json({ b64: downloadedB64 });
+    }
+
+    console.error("OpenAI response had no usable image payload", response);
+    return new Response("No image returned from OpenAI", { status: 500 });
   } catch (err: any) {
     console.error("IMAGE EDIT ERROR", err);
     return new Response(err?.message || "Image edit failed on server", {
