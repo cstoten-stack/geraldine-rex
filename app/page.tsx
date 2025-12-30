@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+const DEFAULT_SKY_PROMPT =
+  "Make the sky a soft seasonal blue with gentle cloud variation. Keep the property unchanged. No dramatic sunset unless already present. No HDR, heavy contrast, or oversaturation. Keep it believable for a local Hertfordshire buyer.";
+
 export default function Page() {
   const isEmbedded =
     typeof window !== "undefined" && window.self !== window.top;
@@ -13,13 +16,13 @@ export default function Page() {
     return new URLSearchParams(window.location.search).get("record_id");
   }, []);
 
-  // Chat
+  /* ---------------- Chat state ---------------- */
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
 
-  // Image editing
+  /* ---------------- Image edit state ---------------- */
   const [file, setFile] = useState<File | null>(null);
   const [imgPrompt, setImgPrompt] = useState("");
   const [editing, setEditing] = useState(false);
@@ -31,12 +34,14 @@ export default function Page() {
     setImgError(null);
   }, [file]);
 
+  /* ---------------- Chat ---------------- */
   async function sendChat() {
     setChatError(null);
+
     const text = input.trim();
     if (!text) return;
 
-    const next = [...messages, { role: "user", content: text } as const];
+    const next = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
     setSending(true);
@@ -70,6 +75,7 @@ export default function Page() {
     }
   }
 
+  /* ---------------- Image edit ---------------- */
   async function editImage() {
     setImgError(null);
     setResultB64(null);
@@ -78,17 +84,15 @@ export default function Page() {
       setImgError("Please choose an image first.");
       return;
     }
-    if (!imgPrompt.trim()) {
-      setImgError("Please add a short edit prompt.");
-      return;
-    }
+
+    const finalPrompt = imgPrompt.trim() || DEFAULT_SKY_PROMPT;
 
     setEditing(true);
 
     try {
       const fd = new FormData();
       fd.append("image", file);
-      fd.append("prompt", imgPrompt.trim());
+      fd.append("prompt", finalPrompt);
       if (recordId) fd.append("record_id", recordId);
 
       const res = await fetch("/api/image-edit", {
@@ -122,14 +126,10 @@ export default function Page() {
         margin: "0 auto",
       }}
     >
-      <header style={{ marginBottom: 12 }}>
-        <h1 style={{ margin: 0, fontSize: 20 }}>Geraldine</h1>
-        <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
-          {recordId ? <>Rex record_id: {recordId}</> : <>No record_id passed</>}
-        </div>
-      </header>
+      <h1 style={{ margin: "0 0 12px", fontSize: 20 }}>Geraldine</h1>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {/* ---------------- Chat panel ---------------- */}
         <section
           style={{
             flex: "1 1 460px",
@@ -151,15 +151,19 @@ export default function Page() {
             }}
           >
             {messages.length === 0 ? (
-              <p style={{ opacity: 0.7, marginTop: 0 }}>
-                Ask for a client ready email, WhatsApp message, listing copy,
-                blog outline, or an image prompt.
+              <p style={{ opacity: 0.7 }}>
+                Ask for a client ready email, listing copy, blog outline, or
+                marketing advice.
               </p>
             ) : (
               messages.map((m, i) => (
                 <div key={i} style={{ marginBottom: 12 }}>
                   <div
-                    style={{ fontSize: 12, opacity: 0.65, fontWeight: 700 }}
+                    style={{
+                      fontSize: 12,
+                      opacity: 0.6,
+                      fontWeight: 600,
+                    }}
                   >
                     {m.role}
                   </div>
@@ -169,11 +173,11 @@ export default function Page() {
             )}
           </div>
 
-          {chatError ? (
+          {chatError && (
             <div style={{ marginTop: 8, color: "#b00020", fontSize: 13 }}>
               {chatError}
             </div>
-          ) : null}
+          )}
 
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <textarea
@@ -207,6 +211,7 @@ export default function Page() {
           </div>
         </section>
 
+        {/* ---------------- Image editing panel ---------------- */}
         <section
           style={{
             flex: "1 1 460px",
@@ -217,21 +222,27 @@ export default function Page() {
         >
           <h2 style={{ marginTop: 0, fontSize: 16 }}>Image editing</h2>
           <p style={{ marginTop: 0, opacity: 0.7 }}>
-            Upload a property photo and describe the edit. Keep it believable
-            for a local Hertfordshire buyer.
+            Upload a property photo and click Edit image. If no prompt is
+            entered, a default seasonal blue sky edit will be applied.
           </p>
 
           <div style={{ display: "grid", gap: 8 }}>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setFile(f);
+                if (f && !imgPrompt.trim()) {
+                  setImgPrompt(DEFAULT_SKY_PROMPT);
+                }
+              }}
             />
 
             <textarea
               value={imgPrompt}
               onChange={(e) => setImgPrompt(e.target.value)}
-              placeholder="Example: Make the sky a soft seasonal blue with gentle cloud variation. Keep the house unchanged. No HDR or oversaturation."
+              placeholder={DEFAULT_SKY_PROMPT}
               style={{
                 width: "100%",
                 height: 90,
@@ -244,7 +255,7 @@ export default function Page() {
 
             <button
               onClick={editImage}
-              disabled={editing || !file || !imgPrompt.trim()}
+              disabled={editing || !file}
               style={{
                 padding: "10px 14px",
                 borderRadius: 10,
@@ -257,17 +268,17 @@ export default function Page() {
               {editing ? "Editing…" : "Edit image"}
             </button>
 
-            {imgError ? (
+            {imgError && (
               <div style={{ color: "#b00020", fontSize: 13 }}>{imgError}</div>
-            ) : null}
+            )}
 
-            {resultB64 ? (
+            {resultB64 && (
               <div style={{ marginTop: 6 }}>
                 <div
                   style={{
                     fontSize: 12,
-                    opacity: 0.65,
-                    fontWeight: 700,
+                    opacity: 0.6,
+                    fontWeight: 600,
                     marginBottom: 6,
                   }}
                 >
@@ -275,7 +286,7 @@ export default function Page() {
                 </div>
                 <img
                   src={`data:image/png;base64,${resultB64}`}
-                  alt="Edited result"
+                  alt="Edited property image"
                   style={{
                     width: "100%",
                     borderRadius: 12,
@@ -283,11 +294,10 @@ export default function Page() {
                   }}
                 />
               </div>
-            ) : null}
+            )}
           </div>
         </section>
       </div>
     </main>
   );
 }
-
