@@ -8,6 +8,8 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -19,42 +21,27 @@ export async function POST(req: Request) {
     const recordId =
       typeof body.record_id === "string" ? body.record_id : null;
 
-    // Build a single system context block
-    const systemContext = recordId
-      ? `${GERALDINE_INSTRUCTIONS}
-
-Additional context:
-This conversation is happening inside Rex.
-record_id=${recordId}.
-Use this context only if relevant.`
+    const instructions = recordId
+      ? `${GERALDINE_INSTRUCTIONS}\n\nAdditional context: This is inside Rex. record_id=${recordId}. Use only if relevant.`
       : GERALDINE_INSTRUCTIONS;
 
-    // Pass conversation exactly as-is
-    const input = body.messages.map((m: any) => ({
-      role: m.role,
-      content: [
-        {
-          type: "input_text",
-          text: String(m.content ?? ""),
-        },
-      ],
+    const input: ChatMsg[] = body.messages.map((m: any) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: String(m.content ?? ""),
     }));
 
     const response = await client.responses.create({
       model: "gpt-4.1-mini",
-      instructions: systemContext,
+      instructions,
       input,
     });
 
-    return Response.json({
-      reply: response.output_text ?? "",
-    });
+    return Response.json({ reply: response.output_text ?? "" });
   } catch (err: any) {
     console.error("CHAT ERROR", err);
     return new Response(
-      "Chat request failed",
+      err?.message || "Chat request failed",
       { status: 500 }
     );
   }
 }
- 
