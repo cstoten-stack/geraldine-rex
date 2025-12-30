@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 const DEFAULT_SKY_PROMPT =
-  "Edit ONLY the sky. Keep the entire property and everything below the roofline exactly unchanged. Do not change cars, paving, garden, windows, signs, bins, people, colours, shadows, or perspective. Replace the sky with a soft seasonal blue sky with gentle cloud variation that looks natural for Hertfordshire. No dramatic sunset unless requested. No HDR, heavy contrast, or oversaturation. The edit must look like a realistic sky replacement, not a re-render.";
+  "Replace the sky with a soft seasonal blue sky with gentle cloud variation. Keep the property unchanged. No dramatic sunset unless requested. No HDR, heavy contrast, or oversaturation. Believable for Hertfordshire.";
 
 export default function Page() {
   const isEmbedded =
