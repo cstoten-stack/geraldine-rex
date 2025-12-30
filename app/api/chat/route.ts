@@ -9,39 +9,51 @@ const client = new OpenAI({
 });
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  try {
+    const body = await req.json();
 
-  if (!body?.messages || !Array.isArray(body.messages)) {
-    return new Response("Invalid request", { status: 400 });
-  }
+    if (!Array.isArray(body?.messages)) {
+      return new Response("Invalid messages payload", { status: 400 });
+    }
 
-  const recordId = typeof body.record_id === "string" ? body.record_id : null;
+    const recordId =
+      typeof body.record_id === "string" ? body.record_id : null;
 
-  const inputMessages = [
-    ...(recordId
-      ? [
-          {
-            role: "user" as const,
-            content: [
-              {
-                type: "input_text" as const,
-                text: `Context: This request is being made from Rex. record_id=${recordId}. If useful, ask what record type it is (contact, property, listing) and what outcome is needed.`,
-              },
-            ],
-          },
-        ]
-      : []),
-    ...body.messages.map((m: any) => ({
+    // Build a single system context block
+    const systemContext = recordId
+      ? `${GERALDINE_INSTRUCTIONS}
+
+Additional context:
+This conversation is happening inside Rex.
+record_id=${recordId}.
+Use this context only if relevant.`
+      : GERALDINE_INSTRUCTIONS;
+
+    // Pass conversation exactly as-is
+    const input = body.messages.map((m: any) => ({
       role: m.role,
-      content: [{ type: "input_text", text: String(m.content ?? "") }],
-    })),
-  ];
+      content: [
+        {
+          type: "input_text",
+          text: String(m.content ?? ""),
+        },
+      ],
+    }));
 
-  const response = await client.responses.create({
-    model: "gpt-4.1-mini",
-    instructions: GERALDINE_INSTRUCTIONS,
-    input: inputMessages,
-  });
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      instructions: systemContext,
+      input,
+    });
 
-  return Response.json({ reply: response.output_text ?? "" });
+    return Response.json({
+      reply: response.output_text ?? "",
+    });
+  } catch (err: any) {
+    console.error("CHAT ERROR", err);
+    return new Response(
+      "Chat request failed",
+      { status: 500 }
+    );
+  }
 }
