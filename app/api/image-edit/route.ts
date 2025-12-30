@@ -1,4 +1,5 @@
 import OpenAI, { toFile } from "openai";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,6 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Strong guardrail: sky only, nothing else changes.
 const HARD_RULE =
   "Edit ONLY the sky. Keep the entire property and everything below the roofline exactly unchanged. " +
   "Do not change cars, paving, garden, windows, doors, roof, brick colour, signage, bins, people, shadows, lighting, perspective, or any objects. " +
@@ -30,10 +30,13 @@ export async function POST(req: Request) {
 
     const finalPrompt = HARD_RULE + userPrompt;
 
-    const buffer = Buffer.from(await image.arrayBuffer());
+    const inputBuffer = Buffer.from(await image.arrayBuffer());
 
-    const imgFile = await toFile(buffer, image.name || "image.jpg", {
-      type: image.type || "image/jpeg",
+    // Convert everything to PNG for dall-e-2
+    const pngBuffer = await sharp(inputBuffer).png().toBuffer();
+
+    const imgFile = await toFile(pngBuffer, "image.png", {
+      type: "image/png",
     });
 
     const response = await client.images.edit({
