@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     });
 
     const response = await client.images.edit({
-      model: "gpt-image-1",
+      model: "dall-e-2",
       image: imgFile,
       prompt: finalPrompt,
     });
